@@ -1,0 +1,13 @@
+{
+    "name": "migra-vendor/migration-generator",
+    "description": "A simple migration generator package",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "MigraVendor\\MigrationGenerator\\": "src/"
+        }
+    },
+    "minimum-stability": "stable",
+    "require": {}
+}
