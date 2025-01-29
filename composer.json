@@ -8,6 +8,13 @@
             "MigraVendor\\MigrationGenerator\\": "src/"
         }
     },
+    "extra": {
+        "laravel": {
+          "providers": [
+            "MigraVendor\\MigrationGenerator\\MigrationGeneratorServiceProvider"
+          ]
+        }
+      },
     "minimum-stability": "stable",
     "require": {}
 }
