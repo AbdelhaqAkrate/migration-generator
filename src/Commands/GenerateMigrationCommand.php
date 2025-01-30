@@ -11,9 +11,14 @@ class GenerateMigrationCommand extends Command
     protected $description = 'Generate a migration interactively';
 
     protected array $columnTypes = [
-        'bigIncrements', 'bigInteger', 'boolean', 'char', 'date', 'dateTime', 'double', 
-        'float', 'increments', 'integer', 'smallInteger', 'string', 'text', 'time', 'timestamp',
-        'unsignedBigInteger', 'unsignedInteger', 'unsignedTinyInteger', 'uuid', 'year'
+        'bigIncrements', 'bigInteger', 'binary', 'boolean', 'char', 'date', 'dateTime', 'dateTimeTz', 'decimal',
+        'double', 'enum', 'float', 'foreignId', 'geometry', 'geometryCollection', 'id', 'increments', 'integer',
+        'ipAddress', 'json', 'jsonb', 'lineString', 'longText', 'macAddress', 'mediumIncrements', 'mediumInteger',
+        'mediumText', 'morphs', 'multiLineString', 'multiPoint', 'multiPolygon', 'nullableMorphs', 'nullableTimestamps',
+        'point', 'polygon', 'rememberToken', 'set', 'smallIncrements', 'smallInteger', 'softDeletes', 'softDeletesTz',
+        'string', 'text', 'time', 'timeTz', 'timestamp', 'timestampTz', 'tinyIncrements', 'tinyInteger',
+        'unsignedBigInteger', 'unsignedDecimal', 'unsignedInteger', 'unsignedMediumInteger', 'unsignedSmallInteger',
+        'unsignedTinyInteger', 'uuid', 'year'
     ];
 
     protected array $foreignKeyTypes = [
