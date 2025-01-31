@@ -21,82 +21,149 @@ class GenerateMigrationCommand extends Command
         'unsignedTinyInteger', 'uuid', 'year'
     ];
 
-    protected array $foreignKeyTypes = [
-        'unsignedBigInteger', 'unsignedInteger', 'unsignedSmallInteger',
-        'unsignedMediumInteger', 'unsignedTinyInteger', 'uuid'
+    protected array $shortcuts = [
+        'n' => 'nullable',
+        'u' => 'unique',
+        'f' => 'foreign',
+        'd' => 'default',
+        'c' => 'cascade',
+        'r' => 'restrict',
+        'no' => 'no action',
     ];
 
     public function handle()
     {
         $tableName = $this->ask('Enter the table name');
 
-        $hasId = $this->confirm('Should the table have an `id` column (primary key)?', true);
-        
+        if (empty($tableName)) {
+            $this->error("Table name is required. Please restart the command.");
+            return;
+        }    
+
+        $hasId = $this->confirm('Should the table have an `id` column?', true);
         $columns = $hasId ? [['columnName' => 'id', 'columnType' => 'id']] : [];
 
+        $this->info("Define columns in the following format:");
+        $this->info("column_name:column_type[|n][|u][|f:table:column][|d:value]");
+        $this->info("Examples:");
+        $this->info("  name:string|n|u");
+        $this->info("  user_id:unsignedBigInteger|f:users:id");
+        $this->info("  price:decimal(8,2)|d:0.00\n");
+
         while (true) {
-            $columnName = $this->ask('Enter column name (or press enter to finish)');
-            if (!$columnName) break;
+            $columnInput = $this->ask('Enter column definition (or press enter to finish)');
+            if (!$columnInput) break;
 
-            $columnType = $this->askColumnType();
+            $columnData = $this->parseColumnInput($columnInput);
+            if (!$columnData) {
+                $this->error("Invalid format. Use the correct structure.");
+                continue;
+            }
 
-            $isNullable = $this->confirm('Should it be nullable?', false);
-            $isUnique = $this->confirm('Is it unique?', false);
-            $isForeign = in_array($columnType, $this->foreignKeyTypes) ? $this->confirm('Is it a foreign key?', false) : false;
-            $foreignTable = $isForeign ? $this->ask('Referenced table') : null;
-            $foreignColumn = $isForeign ? $this->ask('Referenced column', 'id') : null;
-            $onDelete = $isForeign ? $this->choice('ON DELETE action', ['cascade', 'set null', 'restrict', 'no action'], 0) : null;
-            $onUpdate = $isForeign ? $this->choice('ON UPDATE action', ['cascade', 'set null', 'restrict', 'no action'], 0) : null;
+            $columns[] = $columnData;
+        }
 
-            $columns[] = [
-                'columnName' => $columnName,
-                'columnType' => $columnType,
-                'isNullable' => $isNullable ?: false,
-                'isUnique' => $isUnique ?: false,
-                'isForeign' => $isForeign ?: false,
-                'foreignTable' => $foreignTable ?? '',
-                'foreignColumn' => $foreignColumn ?? '',
-                'onDelete' => $onDelete ?? '',
-                'onUpdate' => $onUpdate ?? ''
-            ];
+        if (empty($columns)) {
+            $this->error("No columns defined. Aborting.");
+            return;
         }
 
         $this->generateMigration($tableName, $columns);
     }
 
-    protected function askColumnType(): string
+    public function parseColumnInput(string $input): ?array
     {
-        while (true) {
-            $inputType = strtolower($this->ask('Enter column type (ex: string, integer, etc.)'));
+        $parts = explode('|', $input);
+        $columnBase = explode(':', array_shift($parts));
 
-            if (in_array($inputType, $this->columnTypes)) {
-                return $inputType;
-            }
-
-            $suggestions = $this->findClosestMatches($inputType);
-            if (!empty($suggestions)) {
-                $selected = $this->choice("Did you mean:", $suggestions, 0);
-                return $selected;
-            }
-
-            $this->error("Invalid column type. Please try again.");
+        if (count($columnBase) < 2) {
+            return null;
         }
+
+        [$columnName, $columnType] = $columnBase;
+
+        $normalizedType = $this->askForValidColumnType($columnType);
+        if (!$normalizedType) {
+            return null;
+        }
+
+        $isNullable = in_array('nullable', $parts);
+        $isUnique = in_array('unique', $parts);
+
+        $isForeign = false;
+        $foreignTable = $foreignColumn = null;
+        $onDelete = 'no action';
+        $onUpdate = 'no action';
+
+        foreach ($parts as $part) {
+            if (str_starts_with($part, 'f:')) {
+                $foreignParts = explode(':', $part);
+                $isForeign = true;
+                $foreignTable = $foreignParts[1] ?? null;
+                $foreignColumn = $foreignParts[2] ?? 'id';
+            }
+            if (isset($this->shortcuts[$part])) {
+                if ($part === 'c' || $part === 'r' || $part === 'no') {
+                    $onDelete = $this->shortcuts[$part];
+                    $onUpdate = $this->shortcuts[$part];
+                }
+            }
+        }
+
+        return [
+            'columnName' => $columnName,
+            'columnType' => $normalizedType,
+            'isNullable' => $isNullable,
+            'isUnique' => $isUnique,
+            'isForeign' => $isForeign,
+            'foreignTable' => $foreignTable,
+            'foreignColumn' => $foreignColumn,
+            'onDelete' => $onDelete,
+            'onUpdate' => $onUpdate
+        ];
     }
 
-    protected function findClosestMatches(string $inputType): array
+    protected function askForValidColumnType(string $inputType): ?string
     {
-        $pregInput = strtolower(preg_replace('/[^a-zA-Z]/', '', $inputType));
-        $matches = [];
+        while (!in_array($inputType, $this->columnTypes)) {
+            $suggestedType = $this->findClosestMatch($inputType);
+    
+            if ($suggestedType) {
+                $confirmation = $this->ask(
+                    "Unknown type '{$inputType}'. Did you mean '{$suggestedType}'? (y/n)"
+                );
+    
+                if (strtolower($confirmation) === 'y') {
+                    return $suggestedType;
+                }
+    
+                $inputType = $this->ask("Enter a new type or 'c' to stop adding");
+            } else {
+                $inputType = $this->ask("Unknown column type '{$inputType}'. Enter a valid type or 'c' to stop adding");
+            }
+    
+            if ($inputType === 'c') {
+                return null;
+            }
+        }
+    
+        return $inputType;
+    }
+
+    protected function findClosestMatch(string $inputType): ?string
+    {
+        $closestType = null;
+        $shortestDistance = null;
 
         foreach ($this->columnTypes as $type) {
-            $levDistance = levenshtein($pregInput, strtolower($type));
-            if ($levDistance <= 2) {
-                $matches[$type] = $levDistance;
+            $distance = levenshtein(strtolower($inputType), strtolower($type));
+            if ($shortestDistance === null || $distance < $shortestDistance) {
+                $closestType = $type;
+                $shortestDistance = $distance;
             }
         }
 
-        asort($matches);
-        return array_keys($matches);
+        return ($shortestDistance !== null && $shortestDistance <= 3) ? $closestType : null;
     }
 
     protected function generateMigration($tableName, $columns)
@@ -117,9 +184,7 @@ class GenerateMigrationCommand extends Command
     {
         $result = "";
         foreach ($columns as $column) {
-            $columnName = $column['columnName'];
-            $columnType = $column['columnType'];
-            $line = "\$table->{$columnType}('{$columnName}')";
+            $line = "\$table->{$column['columnType']}('{$column['columnName']}')";
 
             if (isset($column['isNullable']) && $column['isNullable']) {
                 $line .= "->nullable()";
@@ -129,21 +194,15 @@ class GenerateMigrationCommand extends Command
                 $line .= "->unique()";
             }
 
-            if (isset($column['isForeign']) && $column['isForeign'] && !empty($column['foreignTable'])) {
-                $foreignTable = $column['foreignTable'];
-                $foreignColumn = $column['foreignColumn'] ?? 'id';
-                $onDelete = $column['onDelete'];
-                $onUpdate = $column['onUpdate'];
+            if (isset($column['default']) && $column['default'] !== null) {
+                $defaultValue = is_numeric($column['default']) ? $column['default'] : "'{$column['default']}'";
+                $line .= "->default({$defaultValue})";
+            }
 
-                $line .= "; \n\t\t\t\$table->foreign('{$columnName}')->references('{$foreignColumn}')->on('{$foreignTable}')";
-
-                if ($onDelete !== '') {
-                    $line .= "->onDelete('{$onDelete}')";
-                }
-
-                if ($onUpdate !== '') {
-                    $line .= "->onUpdate('{$onUpdate}')";
-                }
+            if (isset($column['isForeign']) && $column['isForeign']) {
+                $line .= "; \n\t\t\t\$table->foreign('{$column['columnName']}')"
+                    . "->references('{$column['foreignColumn']}')->on('{$column['foreignTable']}')"
+                    . "->onDelete('{$column['onDelete']}')->onUpdate('{$column['onUpdate']}')";
             }
 
             $line .= ";";
