@@ -5,6 +5,7 @@ namespace MigraVendor\MigrationGenerator\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class StructureBuilderCommand extends Command
 {
@@ -45,7 +46,7 @@ class StructureBuilderCommand extends Command
         $importLine = '';
         $parentClass = '';
 
-        if ($type === 'Model') {            
+        if ($type === 'Model') {
             [$importLine, $parentClass] = $this->getModelParentClass();
             $importLine = "use {$importLine};\n";
         }
@@ -54,14 +55,13 @@ class StructureBuilderCommand extends Command
 
         return str_replace(
             ['{{ namespace }}', '{{ class }}', '{{ table }}', '{{ extendsLine }}', '{{ importLine }}', '{{ columnDefinitions }}', '{{ getterMethods }}'],
-            ["App\\{$type}s\\{$folderName}", $className, $tableName, $extendsLine, $importLine, $columnDefinitions, $getterMethods],
+            ["App\\" . Str::plural($type) . "\\{$folderName}", $className, $tableName, $extendsLine, $importLine, $columnDefinitions, $getterMethods],
             file_get_contents($stubPath)
         );
     }
-
     protected function generateFile($type, $className, $folderName, $tableName)
     {
-        $directory = app_path("{$type}s/{$folderName}");
+        $directory = app_path(Str::plural($type) . "/{$folderName}");
 
         if (!File::exists($directory)) {
             File::makeDirectory($directory, 0755, true);

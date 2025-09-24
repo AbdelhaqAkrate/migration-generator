@@ -4,7 +4,7 @@ namespace {{ namespace }};
 
 {{ importLine }}
 
-class {{ class }}Repository{{ extendsLine }}
+class {{ class }}{{ extendsLine }}
 {
 
 }
