@@ -4,7 +4,7 @@ namespace {{ namespace }};
 
 {{ importLine }}
 
-class {{ class }}Service{{ extendsLine }}
+class {{ class }}{{ extendsLine }}
 {
 
 }

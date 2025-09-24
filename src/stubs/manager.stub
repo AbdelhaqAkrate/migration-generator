@@ -4,7 +4,7 @@ namespace {{ namespace }};
 
 {{ importLine }}
 
-class {{ class }}Manager{{ extendsLine }}
+class {{ class }}{{ extendsLine }}
 {
     
 }
