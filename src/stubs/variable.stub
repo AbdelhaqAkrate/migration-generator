@@ -1,0 +1,1 @@
+    public const {{ constantName }} = '{{ columnName }}';

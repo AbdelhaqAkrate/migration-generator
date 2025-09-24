@@ -1,0 +1,10 @@
+<?php
+
+namespace {{ namespace }};
+
+{{ importLine }}
+
+class {{ class }}Repository{{ extendsLine }}
+{
+
+}

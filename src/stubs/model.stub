@@ -1,0 +1,13 @@
+<?php
+
+namespace {{ namespace }};
+
+{{ importLine }}
+
+class {{ class }}{{ extendsLine }}
+{
+    protected $table = '{{ table }}';
+    {{ columnDefinitions }}
+
+    {{ getterMethods }}
+}

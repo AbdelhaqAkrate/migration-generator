@@ -12,6 +12,7 @@ class MigrationGeneratorServiceProvider extends ServiceProvider
 
         $this->commands([
             \MigraVendor\MigrationGenerator\Commands\GenerateMigrationCommand::class,
+            \MigraVendor\MigrationGenerator\Commands\StructureBuilderCommand::class,
         ]);
     }
 
@@ -20,6 +21,7 @@ class MigrationGeneratorServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__ . '/../config/migration-generator.php' => config_path('migration-generator.php'),
             __DIR__ . '/stubs/migration.stub' => base_path('stubs/migration.stub'),
+            __DIR__ . '/Stubs/' => base_path('stubs/migra-vendor'),
         ], 'migration-generator');
     }
 }

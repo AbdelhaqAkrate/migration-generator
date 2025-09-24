@@ -1,6 +1,6 @@
 {
     "name": "migra-vendor/migration-generator",
-    "description": "A simple migration generator package",
+    "description": "A simple Laravel migration generator package",
     "type": "library",
     "license": "MIT",
     "autoload": {
@@ -10,11 +10,22 @@
     },
     "extra": {
         "laravel": {
-          "providers": [
-            "MigraVendor\\MigrationGenerator\\MigrationGeneratorServiceProvider"
-          ]
+            "providers": [
+                "MigraVendor\\MigrationGenerator\\MigrationGeneratorServiceProvider"
+            ]
         }
-      },
+    },
+    "require": {
+        "php": ">=8.0",
+        "laravel/framework": "^9.0|^10.0"
+    },
+    "keywords": ["laravel", "migration", "generator"],
+    "authors": [
+        {
+            "name": "Abdelhaq",
+            "email": "emailXd@gmail.com"
+        }
+    ],
     "minimum-stability": "stable",
-    "require": {}
+    "prefer-stable": true
 }
