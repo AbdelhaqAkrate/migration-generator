@@ -194,9 +194,10 @@ class GenerateMigrationCommand extends Command
     private function generateMigrationBody($columns)
     {
         $result = "";
+        $softDeletStmt = "";
         foreach ($columns as $column) {
             if ($column['columnType'] === 'softDeletes') {
-                $result .= "\t\t\t\$table->softDeletes();\n";
+                $softDeletStmt = "\t\t\t\$table->softDeletes();\n";
                 continue;
             }
 
@@ -224,6 +225,9 @@ class GenerateMigrationCommand extends Command
             $line .= ";";
             $result .= "\t\t\t{$line}\n";
         }
+        
+        $result .= $softDeletStmt;
+
         return $result;
     }
 
