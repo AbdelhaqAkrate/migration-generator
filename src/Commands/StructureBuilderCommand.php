@@ -26,32 +26,38 @@ class StructureBuilderCommand extends Command
         $this->info("Structure for table {$tableName} created successfully!");
     }
 
-    protected function generateClassName($tableName)
+    private function generateClassName($tableName)
     {
-        return str_replace(' ', '', ucwords(str_replace('_', ' ', $tableName)));
+        return Str::studly(Str::singular($tableName));
     }
 
-    protected function generateFolderName($className)
+    private function generateFolderName($className)
     {
         return $className;
     }
 
-    protected function getStubContent($type, $className, $folderName, $tableName)
+    private function getStubContent($type, $className, $folderName, $tableName)
     {
         $stubPath = __DIR__ . '/../stubs/' . $type . '.stub';
         $columns = Schema::getColumnListing($tableName);
+        $columns = array_filter($columns, function ($column) {
+            return !in_array($column, ['id', 'created_at', 'updated_at']);
+        });
+
         $columnDefinitions = $this->generateColumnDefinitions($columns);
         $getterMethods = $this->generateGetterMethods($columns);
 
         $importLine = '';
         $parentClass = '';
 
-        if ($type === 'Model') {
-            [$importLine, $parentClass] = $this->getModelParentClass();
-            $importLine = "use {$importLine};\n";
+        [$parentFqn, $parentClass] = $this->getParentClass($type);
+
+        if ($parentFqn) {
+            $importLine = "use {$parentFqn};\n";
         }
 
         $extendsLine = $parentClass ? " extends {$parentClass}" : '';
+
 
         return str_replace(
             ['{{ namespace }}', '{{ class }}', '{{ table }}', '{{ extendsLine }}', '{{ importLine }}', '{{ columnDefinitions }}', '{{ getterMethods }}'],
@@ -59,7 +65,7 @@ class StructureBuilderCommand extends Command
             file_get_contents($stubPath)
         );
     }
-    protected function generateFile($type, $className, $folderName, $tableName)
+    private function generateFile($type, $className, $folderName, $tableName)
     {
         $directory = app_path(Str::plural($type) . "/{$folderName}");
 
@@ -74,20 +80,26 @@ class StructureBuilderCommand extends Command
         $this->info("{$type} created at: {$filePath}");
     }
 
-    protected function getModelParentClass()
+    private function getParentClass($type)
     {
-        if (class_exists('App\Models\AbstractModel')) {
-            return ['App\Models\AbstractModel', 'AbstractModel'];
+        if ($type === 'Model') {
+            if (class_exists('App\Models\AbstractModel')) {
+                return ['App\Models\AbstractModel', 'AbstractModel'];
+            }
+            if (class_exists('App\Models\Model')) {
+                return ['App\Models\Model', 'Model'];
+            }
+            return ['Illuminate\Database\Eloquent\Model', 'Model'];
         }
 
-        if (class_exists('App\Models\Model')) {
-            return ['App\Models\Model', 'Model'];
+        if (in_array($type, ['Repository', 'Manager', 'Service'])) {
+            return $this->findBaseClass($type);
         }
 
-        return ['Illuminate\Database\Eloquent\Model', 'Model'];
+        return [null, null];
     }
 
-    protected function generateColumnDefinitions(array $columns)
+    private function generateColumnDefinitions(array $columns)
     {
         $declaration = '';
         foreach ($columns as $column) {
@@ -96,7 +108,7 @@ class StructureBuilderCommand extends Command
         return $declaration;
     }
 
-    protected function generateColumnDefinitionFromStub($column)
+    private function generateColumnDefinitionFromStub($column)
     {
         $variableStubPath = __DIR__ . '/../stubs/variable.stub';
         $variableStub = file_get_contents($variableStubPath);
@@ -109,7 +121,7 @@ class StructureBuilderCommand extends Command
         );
     }
 
-    protected function generateGetterMethods(array $columns)
+    private function generateGetterMethods(array $columns)
     {
         $methods = '';
         foreach ($columns as $column) {
@@ -118,7 +130,7 @@ class StructureBuilderCommand extends Command
         return $methods;
     }
 
-    protected function generateGetterMethodFromStub($column)
+    private function generateGetterMethodFromStub($column)
     {
         $getterStubPath = __DIR__ . '/../stubs/getter.stub';
         $getterStub = file_get_contents($getterStubPath);
@@ -131,5 +143,24 @@ class StructureBuilderCommand extends Command
             [$methodName, $constantName],
             $getterStub
         );
+    }
+
+    private function findBaseClass(string $type): array
+    {
+        $directory = app_path(Str::plural($type));
+        $baseFile  = $directory . '/' . $type . '.php';
+
+        if (File::exists($baseFile)) {
+            $relativePath = str_replace(app_path() . DIRECTORY_SEPARATOR, '', $baseFile);
+            $class = str_replace(['/', '\\'], '\\', $relativePath);
+            $class = str_replace('.php', '', $class);
+
+            $fqn = "App\\{$class}";
+            $short = $type;
+
+            return [$fqn, $short];
+        }
+
+        return [null, null];
     }
 }
