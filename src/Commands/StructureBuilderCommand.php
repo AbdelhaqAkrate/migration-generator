@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 
 class StructureBuilderCommand extends Command
 {
-    protected $signature = 'make:structure {table}';
+    protected $signature = 'make:structure {table} {--path=}';
     protected $description = 'Create a Model, Repository, Manager, and Service for a given table';
 
     public function handle()
@@ -38,10 +38,15 @@ class StructureBuilderCommand extends Command
 
     private function getStubContent($type, $className, $folderName, $tableName)
     {
+        $workPath = $this->getWorkPath();
+        $nameSpaceBase = trim(str_replace(base_path('app') . DIRECTORY_SEPARATOR, '', $workPath), DIRECTORY_SEPARATOR);
+        $nameSpaceBase = str_replace(['/', '\\'], '\\', $nameSpaceBase);
+
+
         $stubPath = __DIR__ . '/../stubs/' . $type . '.stub';
         $columns = Schema::getColumnListing($tableName);
         $columns = array_filter($columns, function ($column) {
-            return !in_array($column, ['id', 'created_at', 'updated_at']);
+            return !in_array($column, ['id', 'created_at', 'updated_at', 'deleted_at']);
         });
 
         $columnDefinitions = $this->generateColumnDefinitions($columns);
@@ -61,13 +66,22 @@ class StructureBuilderCommand extends Command
 
         return str_replace(
             ['{{ namespace }}', '{{ class }}', '{{ table }}', '{{ extendsLine }}', '{{ importLine }}', '{{ columnDefinitions }}', '{{ getterMethods }}'],
-            ["App\\" . Str::plural($type) . "\\{$folderName}", $className, $tableName, $extendsLine, $importLine, $columnDefinitions, $getterMethods],
+            [
+                "App\\{$nameSpaceBase}\\" . Str::plural($type) . "\\{$folderName}",
+                $className,
+                $tableName,
+                $extendsLine,
+                $importLine,
+                $columnDefinitions,
+                $getterMethods
+            ],
             file_get_contents($stubPath)
         );
     }
     private function generateFile($type, $className, $folderName, $tableName)
     {
-        $directory = app_path(Str::plural($type) . "/{$folderName}");
+        $workPath = $this->getWorkPath();
+        $directory = $workPath . '/' . Str::plural($type) . "/{$folderName}";
 
         if (!File::exists($directory)) {
             File::makeDirectory($directory, 0755, true);
@@ -83,14 +97,22 @@ class StructureBuilderCommand extends Command
     private function getParentClass($type)
     {
         if ($type === 'Model') {
-            if (class_exists('App\Models\AbstractModel')) {
-                return ['App\Models\AbstractModel', 'AbstractModel'];
+            $workPath = $this->getWorkPath();
+            $modelDir = $workPath . '/Models';
+
+            foreach (['AbstractModel', 'Model'] as $file) {
+                $modelFile = $modelDir . "/{$file}.php";
+                if (File::exists($modelFile)) {
+                    $relativePath = trim(str_replace(app_path() . DIRECTORY_SEPARATOR, '', $modelFile), DIRECTORY_SEPARATOR);
+                    $class = str_replace(['/', '\\'], '\\', $relativePath);
+                    $class = str_replace('.php', '', $class);
+                    return ["App\\{$class}", $file];
+                }
             }
-            if (class_exists('App\Models\Model')) {
-                return ['App\Models\Model', 'Model'];
-            }
+
             return ['Illuminate\Database\Eloquent\Model', 'Model'];
         }
+
 
         if (in_array($type, ['Repository', 'Manager', 'Service'])) {
             return $this->findBaseClass($type);
@@ -147,7 +169,7 @@ class StructureBuilderCommand extends Command
 
     private function findBaseClass(string $type): array
     {
-        $directory = app_path(Str::plural($type));
+        $directory = $this->getWorkPath() . '/' . Str::plural($type);
         $baseFile  = $directory . '/' . $type . '.php';
 
         if (File::exists($baseFile)) {
@@ -162,5 +184,24 @@ class StructureBuilderCommand extends Command
         }
 
         return [null, null];
+    }
+
+    private function getWorkPath(): string
+    {
+        $projectPath = $this->option('path');
+
+        if (!$projectPath) {
+            return app_path();
+        }
+
+        $appFolders = scandir(app_path());
+        foreach ($appFolders as $folder) {
+            if (strcasecmp($folder, $projectPath) === 0 && is_dir(app_path($folder))) {
+                return app_path($folder);
+            }
+        }
+
+        $this->error("The path '{$projectPath}' does not exist");
+        exit(1);
     }
 }

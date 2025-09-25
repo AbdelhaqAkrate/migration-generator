@@ -66,9 +66,13 @@ class GenerateMigrationCommand extends Command
             $columns[] = ['columnName' => 'id', 'columnType' => 'id'];
         }
 
+        if ($this->confirm('Should the table support soft deletes?', false)) {
+            $columns[] = ['columnName' => 'softDeletes', 'columnType' => 'softDeletes'];
+        }
+
         $this->info("\n📌 Define columns using the following format:");
         $this->info("column_name:column_type[|n][|u][|f:table:column][|d:value]");
-        
+        $this->info("Type 'help' for guidance or press enter on an empty line to finish.\n");
         while (true) {
             $columnInput = $this->ask('Enter column definition (or press enter to finish):');
             if (!$columnInput) break;
@@ -117,14 +121,14 @@ class GenerateMigrationCommand extends Command
                 $isForeign = true;
                 $foreignTable = $foreignParts[1] ?? null;
                 $foreignColumn = $foreignParts[2] ?? 'id';
-                if(isset($foreignParts[3]) && isset($this->shortcuts[$foreignParts[3]]) && $foreignParts[3] != 'no' && $foreignParts[3]) {
+                if (isset($foreignParts[3]) && isset($this->shortcuts[$foreignParts[3]]) && $foreignParts[3] != 'no' && $foreignParts[3]) {
                     $onDelete = $this->shortcuts[$foreignParts[3]];
                 }
-                if(isset($foreignParts[4]) && isset($this->shortcuts[$foreignParts[4]]) && $foreignParts[4] != 'no') {
+                if (isset($foreignParts[4]) && isset($this->shortcuts[$foreignParts[4]]) && $foreignParts[4] != 'no') {
                     $onUpdate = $this->shortcuts[$foreignParts[4]];
                 }
             }
-    
+
             if (str_starts_with($part, 'd:')) {
                 $defaultValue = substr($part, 2);
             }
@@ -143,7 +147,6 @@ class GenerateMigrationCommand extends Command
             'default' => $defaultValue
         ];
     }
-    
 
     protected function validateColumnType(string $type): ?string
     {
@@ -192,6 +195,11 @@ class GenerateMigrationCommand extends Command
     {
         $result = "";
         foreach ($columns as $column) {
+            if ($column['columnType'] === 'softDeletes') {
+                $result .= "\t\t\t\$table->softDeletes();\n";
+                continue;
+            }
+
             $line = "\$table->{$column['columnType']}('{$column['columnName']}')";
 
             if (isset($column['isNullable']) && $column['isNullable']) {
@@ -218,32 +226,32 @@ class GenerateMigrationCommand extends Command
         }
         return $result;
     }
-    
+
     protected function displayHelp()
     {
         $this->info("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         $this->info("📖 MIGRATION GENERATOR HELP");
         $this->info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    
+
         $this->info("\n🛠️ Column Type Guide:");
-    
-        $columnsPerRow = 4; 
-    
+
+        $columnsPerRow = 4;
+
         $columnChunks = array_chunk($this->columnTypes, $columnsPerRow);
-    
+
         $formattedRows = array_map(fn($chunk) => array_pad($chunk, $columnsPerRow, ''), $columnChunks);
-    
+
         $this->table(array_fill(0, $columnsPerRow, 'Column Type'), $formattedRows);
-    
+
         $this->info("\n⚡ Shortcut Modifiers:");
         $this->table(['Shortcut', 'Description'], array_map(fn($key, $desc) => [$key, $desc], array_keys($this->shortcuts), $this->shortcuts));
-    
+
         $this->info("\n📌 Example Column Definitions:");
         $this->info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         $this->info("  name:string|n|u   (Nullable & Unique string column)");
         $this->info("  user_id:unsignedBigInteger|f:users:id  (Foreign key reference)");
         $this->info("  price:decimal(8,2)|d:0.00  (Decimal with default value)");
-    
+
         $this->info("\n✅ Use the format: column_name:column_type[|modifiers]");
         $this->info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     }
