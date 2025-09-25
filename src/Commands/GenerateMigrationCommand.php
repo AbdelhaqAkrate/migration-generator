@@ -47,7 +47,7 @@ class GenerateMigrationCommand extends Command
         $this->generateMigration($tableName, $columns);
     }
 
-    protected function askForTableName(): string
+    private function askForTableName(): string
     {
         do {
             $tableName = $this->ask("Enter the table name:");
@@ -59,7 +59,7 @@ class GenerateMigrationCommand extends Command
         return $tableName;
     }
 
-    protected function collectColumnDefinitions(): array
+    private function collectColumnDefinitions(): array
     {
         $columns = [];
         if ($this->confirm('Should the table have an `id` column?', true)) {
@@ -148,7 +148,7 @@ class GenerateMigrationCommand extends Command
         ];
     }
 
-    protected function validateColumnType(string $type): ?string
+    private function validateColumnType(string $type): ?string
     {
         if (!in_array($type, $this->columnTypes)) {
             $suggestedType = $this->findClosestMatch($type);
@@ -161,7 +161,7 @@ class GenerateMigrationCommand extends Command
         return $type;
     }
 
-    protected function findClosestMatch(string $inputType): ?string
+    private function findClosestMatch(string $inputType): ?string
     {
         $closestType = null;
         $shortestDistance = null;
@@ -177,7 +177,7 @@ class GenerateMigrationCommand extends Command
         return ($shortestDistance !== null && $shortestDistance <= 3) ? $closestType : null;
     }
 
-    protected function generateMigration($tableName, $columns)
+    private function generateMigration($tableName, $columns)
     {
         $migrationName = 'create_' . $tableName . '_table';
         $fileName = date('Y_m_d_His') . "_{$migrationName}.php";
@@ -191,7 +191,7 @@ class GenerateMigrationCommand extends Command
         $this->info("✅ Migration created: {$fileName}");
     }
 
-    protected function generateMigrationBody($columns)
+    private function generateMigrationBody($columns)
     {
         $result = "";
         foreach ($columns as $column) {
@@ -227,7 +227,7 @@ class GenerateMigrationCommand extends Command
         return $result;
     }
 
-    protected function displayHelp()
+    private function displayHelp()
     {
         $this->info("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         $this->info("📖 MIGRATION GENERATOR HELP");

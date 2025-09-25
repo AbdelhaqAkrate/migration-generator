@@ -126,7 +126,8 @@ php artisan generate:migration
 
 1. Enter table name
 2. Add ID column? (default: yes)
-3. Define columns:
+3. Add SoftDeletes (default: yes)
+4. Define columns:
 
 ```bash
 column_name:column_type[|n][|u][|f:table:column][|d:value]
@@ -169,9 +170,20 @@ Generate a **Model**, **Repository**, **Manager**, and **Service**:
 
 ```bash
 php artisan make:structure users
+
+or 
+
+php artisan make:structure users --path=Core
 ```
 
-**Output (App/Models/Users/):**
+**Output Without --path (App/Models/Users/):**
+
+* `User.php` (Model)
+* `UserRepository.php`
+* `UserManager.php`
+* `UserService.php`
+
+**Output With --path (App/Core/Models/Users/):**
 
 * `User.php` (Model)
 * `UserRepository.php`
